@@ -2154,7 +2154,6 @@
                           enddo
                           call BojanPotential(j, i,BU) 
                           EnergyC = EnergyC + BU 
-! Where was VC set previously???
                           VirialC = VirialC + VC
                           mcy(i) = smcy 
                           do k = 1, NLJ
@@ -2175,12 +2174,9 @@
        
 !$OMP  parallel do default(none)                                         &
 !$OMP   private (k,j,xcmcij,ycmcij,zcmcij,xcmcn,ycmcn,zcmcn,cmcd2,xclj,yclj,zclj,sigmaSF,welldepthSF,UC,dc2) &
-!$OMP   firstprivate (NLJ,NC3,pbcx,pbcy,pbcz,xc,yc,zc,mcx,mcy,mcz,ljx,ljy,ljz,r2Cutoff,i,VC) &
-!$OMP   firstprivate (CarbonLengthx1,CarbonLengthy1,BoxLengthZ,sigmaSS,sigmaFF,welldepthSS,welldepthFF) &
-!$OMP   reduction (+:EnergyC,VirialC) &
-!$OMP   lastprivate (VC)
-! lastprivate(VC) should not be needed.  Next big loop sets it though without calling potentialEnergyC first.
-! potentialEnergyC changes VC
+!$OMP   shared (nlj,nc3,pbcx,pbcy,pbcz,xc,yc,zc,mcx,mcy,mcz,r2Cutoff,VC,ljx,ljy,ljz,i) &
+!$OMP   shared (CarbonLengthx1,CarbonLengthy1,BoxLengthZ,sigmaSS,sigmaFF,welldepthSS,welldepthFF) &
+!$OMP   reduction (+:EnergyC,VirialC)
           do k = 1, NLJ
              do j= 1, NC3
 !               --------------------
@@ -2251,18 +2247,11 @@
 !$OMP    private (CLVectorX0,CLVectorY0,CLVectorZ0,CLVectorX,CLVectorY,CLVectorZ) &
 !$OMP    private (cld,xcl,ycl,zcl,xmcn,ymcn,zmcn,U,V,CLU,CLV,EnergyCij,welldepth) &
 !$OMP    private (sigma,gSM) &
-!$OMP    shared (EnergyMatrix) &
-!$OMP    firstprivate (i,Npart,ExtraBin,CarbonLengthx1,CarbonLengthy1,BoxLengthZ) &
-!$OMP    firstprivate (indNinSBox,SubBox,mcx,mcy,mcz,ljx,ljy,ljz,CLx,CLy,CLz) &
-!$OMPT   firstprivate (sigmaFF,SMLimitZ,Temperature,charges) &
-!$OMP    firstprivate (LOCALF,ADSORPTION,flag,R2Cutoff,welldepthFF,NLJ,pbcx,pbcy,pbcz) &
-!$OMP    firstprivate (BUCKINGHAM,ksi,ksiF,NCL,EnergyCi,SFEnergy,smediation1,smediation2) &
+!$OMP    shared (Npart,indNinSBox,SubBox,i,ExtraBin,CarbonLengthx1,CarbonLengthy1,BoxLengthZ) &
+!$OMP    shared (mcx,mcy,mcz,LOCALF,ADSORPTION,flag,ljx,ljy,ljz,clx,cly,clz) &
+!$OMP    shared (BUCKINGHAM,ksi,ksif,EnergyMatrix,NCL,EnergyCi,SFEnergy,smediation1,smediation2) &
+!$OMP    shared (R2Cutoff,welldepthFF,NLJ,pbcx,pbcy,pbcz,sigmaFF,SMLimitZ,Temperature,charges) &
 !$OMP    reduction (+:CLEnergy,VirialCL,ExtCLEnergy1,ExtEnergy1,Energy,Virial,VirialF)
-
-!routines:
-! potentialEnergy does not change any globals.
-! coulombforce is pure.
-
            do j = 1, Npart !! 1-do
               if(ExtraBin)then
                 if( (indNinSBox(i).eq.SubBox) .and. (indNinSBox(j).lt.SubBox) )CYCLE
@@ -2797,7 +2786,6 @@
                        call BojanPotential(j, i,BU) 
                        EnergyC = EnergyC + BU
                        PEnergyC = PEnergyC + BU 
-! Where was VC set???
                        VirialC = VirialC + VC
                        mcy(i) = smcy 
                        do k = 1, NLJ
@@ -2896,9 +2884,6 @@
       USE  BUCKINGHAM_M
       implicit none
       
-      intent(in) :: d2,sigma1,welldepth1
-      intent(out) :: U,V
-
       real*8 d1, d2, d6, U,V
       real*8 sigma1, welldepth1
       real*8 term1, term2, term3
@@ -4305,8 +4290,6 @@
     
        integer i,j, k 
        
-       intent(in) :: i
-       intent(out) :: Energy
        real*8 Energy, iEnergy, rhosperM3, rho_s
        real*8 mcdistanceZ,distanceZ
        real*8 SigmaSF, WellDepthSF
@@ -4588,13 +4571,11 @@
 !   SUBROUTINE COULOMB FORCE
 !
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
-        pure subroutine coulombforce(cld, charge1,charge2,CLU,CLV)
+        subroutine coulombforce(cld, charge1,charge2,CLU,CLV)
         USE Constant_M
         USE MCSETTING_M
         implicit none
-
-        intent(in) :: cld,charge1,charge2
-        intent(out) :: CLU,CLV
+        
         real*8 cld,charge1,charge2, CLU,CLV
         
                 
@@ -4603,7 +4584,7 @@
 !           return
 !        else       
         CLU = charge1*charge2/(4.0e0*pi*permittivity*Scalelength*1.0e-10*scaleEnergy*kB*cld)
-        CLV = CLU/3.0d0
+        CLV = CLU/3.0
 !        endif
         return
         end
@@ -4615,16 +4596,10 @@
 !
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++               
      subroutine BojanPotential(bi,i,BU) 
-     USE Constant_M, only:pi
-     USE FLUID_SOLID_M, only:BdeltaZ,Ny,StripW,rhosperM2,subforce,LJz,Py,StripC, &
-         LJy,BwelldepthSS,welldepthFF,BsigmaSS,sigmaFF,BsigmaSF,NLJ,BojanSlit,StripLy, &
-         tan_StripAngleY,StripAngleY,cos_StripAngleY,Stripgap,StripZ0,TopStrip,StriplayerN, &
-         NS
-     USE MCSETTING_M, only:CarbonLengthy1,Close2Ends,BoxlengthZ,Clo1Hard,Close1End
-     USE POREFIGURE_M, only:Clo2rhosperM2,Clo2LayerN,Clo2LengthZ,Clo2Mid_z,Clo2welldepthSS, &
-         Clo2sigmaSS,Clo2gap,Clo1rhosperM2,Clo1gap,Clo1LayerN,Clo1LengthZ,Clo1welldepthSS, &
-         Clo1sigmaSS,Clo1Mid_z,IncrhosperM2,Incgap,IncLayerN,IncLengthY, &
-         IncMid_y,IncCornerZ,Inc_A,Inc_B,Inc_C,IncwelldepthSS,IncsigmaSS
+     USE Constant_M
+     USE FLUID_SOLID_M
+     USE MCSETTING_M
+     USE POREFIGURE_M
      implicit none
      
      integer bi, i, j, k
