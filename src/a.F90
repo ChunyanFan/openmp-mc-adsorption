@@ -2112,7 +2112,12 @@
 
 
           if(Bojan)then
-              do j = 1, NS 
+!$OMP  parallel do default(none) &
+!$OMP   private (j,k,deltay,deltay1,cy1,BU,smcy,LJy1,sLJy) &
+!$OMP   shared (i,NS,extrabin,indninsbox,carbonlengthy1,BoPBCy,LJy,mcy) &
+!$OMP   shared (NLJ,StripC,StripW,SubBox,VC) &
+!$OMP   reduction (+:EnergyC,VirialC)
+              do j = 1, NS
                   IF(ExtraBin)THEN
                      if(indNinSBox(i).lt.SubBox)then
                         call BojanPotential(j, i,BU) 
@@ -2164,6 +2169,11 @@
              ENDIF  
          endif
        
+!$OMP  parallel do default(none)                                         &
+!$OMP   private (k,j,xcmcij,ycmcij,zcmcij,xcmcn,ycmcn,zcmcn,cmcd2,xclj,yclj,zclj,sigmaSF,welldepthSF,UC,dc2) &
+!$OMP   shared (nlj,nc3,pbcx,pbcy,pbcz,xc,yc,zc,mcx,mcy,mcz,r2Cutoff,VC,ljx,ljy,ljz,i) &
+!$OMP   shared (CarbonLengthx1,CarbonLengthy1,BoxLengthZ,sigmaSS,sigmaFF,welldepthSS,welldepthFF) &
+!$OMP   reduction (+:EnergyC,VirialC)
           do k = 1, NLJ
              do j= 1, NC3
 !               --------------------
@@ -2227,6 +2237,18 @@
 !      ------------------------------------
       if(i.gt.0) then   !! 1-if
         if((.NOT. ADSORPTION).OR.(.NOT. LOCALF).OR.(i .GT. Npart) .OR. (FLAG .eq. 1))then  !! 2-if
+!$OMP  parallel do default(none)                                         &
+!$OMP    private (j,pEnergy,d2,mcd2,VectorProduct,k,m,xlj,ylj,zlj,xmclj,ymclj,zmclj) &
+!$OMP    private (MCVectorX0,MCVectorY0,MCVectorZ0,MCVectorX,MCVectorY,MCVectorZ) &
+!$OMP    private (LJVectorX0,LJVectorY0,LJVectorZ0,LJVectorX,LJVectorY,LJVectorZ) &
+!$OMP    private (CLVectorX0,CLVectorY0,CLVectorZ0,CLVectorX,CLVectorY,CLVectorZ) &
+!$OMP    private (cld,xcl,ycl,zcl,xmcn,ymcn,zmcn,U,V,CLU,CLV,EnergyCij,welldepth) &
+!$OMP    private (sigma,gSM) &
+!$OMP    shared (Npart,indNinSBox,SubBox,i,ExtraBin,CarbonLengthx1,CarbonLengthy1,BoxLengthZ) &
+!$OMP    shared (mcx,mcy,mcz,LOCALF,ADSORPTION,flag,ljx,ljy,ljz,clx,cly,clz) &
+!$OMP    shared (BUCKINGHAM,ksi,ksif,EnergyMatrix,NCL,EnergyCi,SFEnergy,smediation1,smediation2) &
+!$OMP    shared (R2Cutoff,welldepthFF,NLJ,pbcx,pbcy,pbcz,sigmaFF,SMLimitZ,Temperature,charges) &
+!$OMP    reduction (+:CLEnergy,VirialCL,ExtCLEnergy1,ExtEnergy1,Energy,Virial,VirialF)
            do j = 1, Npart !! 1-do
               if(ExtraBin)then
                 if( (indNinSBox(i).eq.SubBox) .and. (indNinSBox(j).lt.SubBox) )CYCLE
@@ -4281,6 +4303,11 @@
 !         return
 !       endif
        
+!$OMP  parallel do default(none)                                         &
+!$OMP   private (distancez,ienergy,j,k,sigmasf,welldepthsf)             &
+!$OMP   shared  (i,graphenelayer,ljz,nlj,nsteele,pi,psteele,rho_s,      &
+!$OMP            sigmaff,sigmass,welldepthff,welldepthss)               &
+!$OMP   reduction (+:energy)
        DO k = 1, Nsteele
          do j=1,NLJ
             sigmaSF     = (sigmaFF(j) + sigmaSS)/2.0e0
@@ -4630,20 +4657,28 @@
              endif
            enddo
         ENDIF
-                       
+
+! Lines after !!! contains assignment to a module variable.
+!$OMP critical
        do k = 1, NLJ
            IF(bi.le.NS)THEN
               totforce   = 0.0e0             
+!!!
               BsigmaSF = (sigmaFF(k)+BsigmaSS(bi))/2.0e0
               BwelldepthSF = sqrt(welldepthFF(k)*BwelldepthSS(bi))
               IF(StripAngleY(bi).eq.0.0)THEN
                   Cy =  LJy(i,k) - StripC(bi)          
+!!!
                   Py =  StripW(bi)/2.0e0 - Cy    ! the y coordinates of the right-hand edge and left-hand edge relative to the fluid particle
+!!!
                   Ny = -StripW(bi)/2.0e0 - Cy    ! Py: positive y, Ny: negative y, give the location of the edges of the strip relative to the position of the adsorbate
           
                   do j = 1, layerTotal
+!!!
                      BdeltaZ = abs(Cz(j)-LJz(i,k)) ! the distance between a LJ site and one of the strips in the z direction
+!!!
                      call BojanCalculation          
+!!!
                      totforce = totforce + subforce
                   enddo
               ELSE
@@ -4651,12 +4686,18 @@
                      VLine_A2(j) = Line_B1(j)/Line_A1(j)
                      VLine_B2(j) = -1.0E0
                      VLine_C2(j) = LJz(i,k)-VLine_A2(j)*LJy(i,k) 
+!!!
                      BdeltaZ = abs(Line_A1(j)*LJy(i,k) + Line_B1(j)*LJz(i,k)+Line_C1(j))/sqrt(Line_A1(j)**2.0 + Line_B1(j)**2.0)
                      Project_y = ( Line_B1(j)*VLine_C2(j) - VLine_B2(j)*Line_C1(j) )/ (Line_A1(j)*VLine_B2(j) - VLine_A2(j)*Line_B1(j))
+!!!
                      Cy = (  Project_y - StripC(bi) )/cos_StripAngleY(bi)
+!!!
                      Py = (  StripW(bi)/2.0e0 )/cos_StripAngleY(bi) - Cy
+!!!
                      Ny = ( -StripW(bi)/2.0e0 )/cos_StripAngleY(bi) - Cy
+!!!
                      call BojanCalculation          
+!!!
                      totforce = totforce + subforce
                   enddo
               ENDIF
@@ -4666,16 +4707,22 @@
  
           IF(bi.eq.NS+1)then   ! For InclinPore
              Inctotforce = 0.0e0
+!!!
              BsigmaSF = (sigmaFF(k)+IncsigmaSS)/2.0e0
              BwelldepthSF = sqrt(welldepthFF(k)*IncwelldepthSS)
              DisP_L = abs(Inc_A*LJy(i,k)+Inc_B*LJZ(i,k)+Inc_C)/sqrt(Inc_A**2.0+Inc_B**2)
              DisP_CZ = sqrt(LJy(i,k)**2.0 + (LJZ(i,k)-IncCornerZ)**2.0)
              DisCy = sqrt(DisP_CZ**2.0-DisP_L**2.0)
+!!!
              Cy = DisCy - IncMid_y
+!!!
              Py =  IncLengthY/2.0e0 - Cy
+!!!
              Ny = -IncLengthY/2.0e0 - Cy
              do j = 1, IncLayerN
+!!!
                 BdeltaZ = DisP_L + (j-1)*Incgap
+!!!
                 call BojanCalculation
                 Inctotforce = Inctotforce + subforce
              enddo
@@ -4688,13 +4735,19 @@
                  IF(Clo1Hard)Then
                     Clo1totforce = 0.0e0
                  ELSE
+!!!
                     BsigmaSF = (sigmaFF(k)+Clo1sigmaSS)/2.0e0
                     BwelldepthSF = sqrt(welldepthFF(k)*Clo1welldepthSS)   
+!!!
                     Cy =  LJZ(i,k)- Clo1Mid_z
+!!!
                     Py =  Clo1LengthZ/2.0e0 - Cy
+!!!
                     Ny = -Clo1LengthZ/2.0e0 - Cy
                     do j = 1, Clo1LayerN
+!!!
                        BdeltaZ = LJy(i,k)+(j-1)*Clo1gap + Clo1gap ! Add the gap between the pore walls and the closed end
+!!!
                        call BojanCalculation
                        Clo1totforce = Clo1totforce + subforce
                     enddo
@@ -4703,14 +4756,20 @@
              ENDIF
              IF(Close2Ends)THEN
                  Clo2totforce = 0.0e0
+!!!
                  BsigmaSF = (sigmaFF(k)+Clo2sigmaSS)/2.0e0
                  BwelldepthSF = sqrt(welldepthFF(k)*Clo2welldepthSS)   
                  Cy =  LJZ(i,k)- Clo2Mid_z
+!!!
                  Py =  Clo2LengthZ/2.0e0 - Cy
+!!!
                  Ny = -Clo2LengthZ/2.0e0 - Cy
                  do j = 1, Clo2LayerN
+!!!
                     BdeltaZ = CarbonLengthy1-LJy(i,k)+(j-1)*Clo2gap + Clo2gap ! Add the gap between the pore walls and the closed end
+!!!
                     call BojanCalculation
+!!!
                     Clo2totforce = Clo2totforce + subforce
                  enddo
                  BU = BU + 2.0e0*pi*Clo2rhosperM2*(BsigmaSF**2.0e0)*BwelldepthSF*Clo2totforce
@@ -4718,6 +4777,7 @@
          ENDIF
           
        enddo
+!$OMP end critical
     return
     end         
 !+++++++++++++++++++++++++++++++++++++
@@ -4767,9 +4827,11 @@
 !      SUBROUTINE Bojan Repulsion and attraction
 !
 !+++++++++++++++++++++++++++++++++++++++++++++++++             
-       subroutine Brepatt (y, z, BsigmaSF, Repulsion, Attraction)
+       pure subroutine Brepatt (y, z, BsigmaSF, Repulsion, Attraction)
        implicit none
        
+       intent(in) :: z,y,BsigmaSF
+       intent(out) :: Repulsion, Attraction
        real*8 y,z,z2,sumy2z2
        real*8 Repulsion, Attraction
        real*8 BsigmaSF
@@ -5193,7 +5255,7 @@
        Allocate(dz(maxbin),dzA(maxbin),DDensity(maxbin),DDensityKmolperM3(maxbin))
        Allocate(UFFinBin(maxbin),USFinBin(maxbin))
        Allocate(sum_Ninbin(maxbin), sum_UFFinBin(maxbin), sum_USFinBin(maxbin))
-!       Allocate(sum_NNinBin(maxbin), sum_UFFNinBin(maxbin), sum_USFNinBin(maxbin))
+       Allocate(sum_NNinBin(maxbin), sum_UFFNinBin(maxbin), sum_USFNinBin(maxbin))
        Allocate(SumUFFKLofBin(maxbin), LocalEnergy(maxbin))
        Allocate(UFF1toBin(maxbin), USF1toBin(maxbin), UFFout1toBin(maxbin), N1toBin(maxbin))
        Allocate(sum_SumUFFKLofBin(maxbin), sum_SumUFFKLNofBin(maxbin))
