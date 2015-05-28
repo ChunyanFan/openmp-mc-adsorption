@@ -104,7 +104,10 @@
 !     CHARACTERS
 !     ----------
       character*200 filename
-      
+      external omp_get_wtime
+
+      double precision:: ostart, oend, omp_get_wtime
+      ostart=omp_get_wtime()
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
 !     CONSTANT
@@ -1061,5 +1064,6 @@
      
      DEALLOCATE(Psteele)
      DEAllocate(xC,yC,zC)
-
+     oend =omp_get_wtime()
+     print*,'OpenNP elapsed time', oend-ostart
     END PROGRAM PoreProcess6

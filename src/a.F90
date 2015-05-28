@@ -1,3 +1,4 @@
+
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -17,7 +18,6 @@
     USE FLEXICLINFO_M
     USE SUBBOX_M 
     implicit none
-    
     integer iP, isN, sNmove,iSub, FLAG
     integer numofinsert, successinsert, numofdelete, successdelete
     integer numberOfMove, numberOfAcceptanceMove
@@ -61,7 +61,7 @@
     real*8, Dimension(:),POINTER::sum_DNbin, ave_DNbin, DNbin
     real*8, Dimension(:),POINTER::dz,dzA,DDensity,DDensityKmolperM3  
   
-      
+     integer omp_get_thread_num
               
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
@@ -124,7 +124,6 @@
        
        
        IF(LocalD2D) call DDistribution_2D(0)
-
     do iPC = 1 , NumOfPre
        write(*,*)'-----------------------------------------------------------------'
        write(*,*)'The pressure being calculated is _ of _ - _:', iPC,NumOfPre,P(iPC)
@@ -146,12 +145,12 @@
           deltaRx   = deltaRxInitial
           deltaRy   = deltaRyInitial
           deltaRz   = deltaRzInitial
-          write(*,*)'deltaRx,deltaRy,deltaRz',deltaRx,deltaRy,deltaRz
+           write(*,*)'deltaRx,deltaRy,deltaRz',deltaRx,deltaRy,deltaRz
        endif
 !      --------------------------------
 !      INITIAL POSITION ALL N PARTICLES
 !      --------------------------------
-!       call Initialization   
+!       call Initialization
         write(1,*)P(iPC),rho(iPC)
 !      -------------------------------- 
 !      EQUILIBRIUM STEPS FOR ADSORPTION 
@@ -175,7 +174,6 @@
           if(ExtraBin)ExtTEnergy = ExtEnergy + ExtCLEnergy
           write(*,*)'TEnergy, Energy, CLEnergy, EnergyC', TEnergy, Energy, CLEnergy, EnergyC
           write(1,*)'TEnergy, Energy, CLEnergy, EnergyC', TEnergy, Energy, CLEnergy, EnergyC
-    
        LAYERF = .FALSE.
        
 
@@ -255,7 +253,7 @@
                   if((mod(numberofequilibrium,100000).eq.0).and.(numberofequilibrium.LE.1E7))then  
                      write(23,218)P(iPC),numberofequilibrium,(SucMovein(i)-SucMoveout(i),i=1,SubBox), EnergyTotal/numberofequilibrium  
 218                  FORMAT(1x,E11.4,I12,15E14.4,E14.4) 
-                     SucMovein = 0
+		     SucMovein = 0
                      SucMoveout = 0
                    endif
                   sum_Npart = sum_Npart + Npart
@@ -291,7 +289,7 @@
                   if((mod(numberofequilibrium,100000).eq.0).and.(numberofequilibrium.LE.1E7))then  
                      write(23,220)P(iPC),numberofequilibrium,(SucMovein(i)-SucMoveout(i),i=1,SubBox) , EnergyTotal/numberofequilibrium 
 220                  FORMAT(1x,E11.4,I12,15E14.4,E14.4) 
-                     SucMovein = 0
+		     SucMovein = 0
                      SucMoveout = 0
                    endif
                   sum_Npart = sum_Npart + Npart
@@ -302,7 +300,6 @@
          enddo !iEqui
          write(16,279)P(iPC),(SStepX(i)*ScaleLength,i=1,SubBox),(SStepY(i)*ScaleLength,i=1,SubBox),(SStepZ(i)*ScaleLength,i=1,SubBox)
 279      FORMAT(1x,E11.4,45E18.8)
-         
           IF(ChangeXY)THEN  !AT THE END OF EQULIBRIM STAGE RESET THE BOX WITH THE AVERAGE BOX LENGTH
              CALL BOXRESET(SumCarbonlengthx1,SumCarbonlengthy1,SumBoxlengthZ,NChange)
           ENDIF
@@ -312,7 +309,7 @@
                 SucMovein = 0.0e0
                 SucMoveout= 0.0e0
              ENDIF
-          do iEqui = 1, Ncycle
+             do iEqui = 1, Ncycle
              if (mod(iEqui,1000).eq.0)then
                 write(*,*)'================GCMC EQULIBRATION==================='
                 write(1,*)'================GCMC EQULIBRATION==================='
@@ -325,12 +322,22 @@
                 write(1,650)deltaRy,deltaRz
       649       format(1x,'P-pa:',E11.4, ' Ratio:',e15.6, '  deltaRx:',e11.4)
       650       format(1x,'  deltaRy:',e11.4, '  deltaRz:',e11.4)
-
              endif
-         
              if(.NOT. FlexiCL)RdmCL = 0.0E0
-             do iMove = 1, Nmove
+
+!$OMP  parallel default(none) shared(nmove, NUMBEROFEQUILIBRIUM,SDisplace, RdmCL,SUM_NPART,NPART)                                       &
+!$OMP&   private (NUMOFINSERT,SUCCESSINSERT,NUMOFDELETE,              &
+!$OMP&            SUCCESSDELETE,NUMBEROFMOVE,NUMBEROFACCEPTANCEMOVE,     &
+!$OMP&            IEQUI,I,RDN,ENERGYTOTAL,           &
+!$OMP&            TOTACCEPTANCERATIO,ENERGY,CLENERGY,ENERGYC,TENERGY,    &
+!$OMP&            ACCEPTANCERATIO,IPC,DELTARX,DELTARY,   &
+!$OMP&            DELTARZ,FLEXICL,NCYCLE,P,SUBBOX, &
+!$OMP&            SUCMOVEIN,SUCMOVEOUT)
+              do iMove = 1, Nmove
+                 !print*,'iMove=',imove !Nmove is 1000
+!$OMP single
                 call random_number(rdn)
+!$OMP end single
                 if(rdn.lt.RdmCL)then
                    call CLMove(TEnergy,Energy,CLEnergy,EnergyC)
                 else if (rdn .ge. RdmCL .AND. rdn .le. (1.0+2.0*RdmCL)/3.0E0)then
@@ -339,11 +346,15 @@
                    call mcexc(TEnergy,Energy, CLEnergy,EnergyC, numofinsert, &
             &              successinsert,numofdelete,successdelete)
                 endif
+!$OMP atomic
                 numberofequilibrium = numberofequilibrium + 1.0e0
+!$OMP end atomic
                 IF(SDisplace)THEN
                    if((mod(numberofequilibrium,100000).eq.0).and.(numberofequilibrium.LE.1E7))then  
-                       write(23,316)P(iPC),numberofequilibrium,(SucMovein(i)-SucMoveout(i),i=1,SubBox), EnergyTotal/numberofequilibrium 
+!$OMP critical
+                     write(23,316)P(iPC),numberofequilibrium,(SucMovein(i)-SucMoveout(i),i=1,SubBox), EnergyTotal/numberofequilibrium 
 316                    FORMAT(1x,E11.4,I12,15E14.4,E14.4) 
+!$OMP end critical
                        SucMovein = 0
                        SucMoveout = 0
                    endif
@@ -355,23 +366,19 @@
                 endif
 
              enddo
-
+!!$OMP end do nowait
+!$OMP end parallel 
              call adjustment(iEqui,numberOfMove, numberOfAcceptanceMove,AcceptanceRatio)
              totAcceptanceRatio = totAcceptanceRatio + AcceptanceRatio
          
-            
-         
          enddo
-          
-         
-          
-          IF(SDisplace)THEN    
+                  
+        IF(SDisplace)THEN    
              write(16,341)P(iPC), deltaRx*ScaleLength,  deltaRy*ScaleLength,  deltaRz*ScaleLength
 341          FORMAT(1x,E11.4,3E18.8)
           ENDIF
 
      ENDIF
-
      write(*,*) '1284 TEnergy, Energy, CLEnergy, EnergyC', TEnergy, Energy, CLEnergy, EnergyC
 !    -----------------------------
 !    SAMPLING STEPS FOR ADSORPTION
@@ -381,7 +388,6 @@
      if(ExtraBin)ExtTEnergy = ExtEnergy + ExtCLEnergy
      write(*,*) 'TEnergy, Energy, CLEnergy, EnergyC', TEnergy, Energy, CLEnergy, EnergyC
      write(1,*) 'TEnergy, Energy, CLEnergy, EnergyC', TEnergy, Energy, CLEnergy, EnergyC
-    
      Ninpore = 0
      CollectN = 0
      do i = 1, Npart
@@ -409,9 +415,6 @@
      Sum_Ninpore            = 0.0E0
      Sum_CollectN           = 0.0E0
      
-     
-     
-     
     IF (DistanceD)THEN
          do i = 1, Dmaxbin
          sum_DNbin(i) = 0.0e0
@@ -423,10 +426,6 @@
         write(31,*)'==========================================='
     ENDIF
     
-         
-    
-     
-         
      IF(SDisplace.AND.(.NOT. TradMC))THEN
            totNinSBox = 0.0e0
          
@@ -614,7 +613,7 @@
                write(1,720)deltaRy,deltaRz
       719      format(1x,'P-pa:',E11.4, 'Ratio:',e15.6, '  deltaR:',e11.4)
       720      format(1x,'  deltaRy:',e11.4, '  deltaRz:',e11.4)
-            endif
+      endif
            
             do iMove=1, Nmove           
                 call random_number(rdn)
@@ -806,7 +805,6 @@
 !    DISPLAY THE OUTPUT
 !    ------------------
      time = secnds(0.0) - time
-        
      write(*,30)  rho(iPC),Ns_rho,Nb_rho,Ex_Nb_rho, AccVolume, Av_Npart,Av_Ninpore,Ad_Ninpore, &
        &          Pressure(iPC), EnergyAverage,Iso_Heat, &
        &          Iso_HeatFF, Iso_HeatSF, &
@@ -897,9 +895,8 @@
         write(13,*)iPC,P(iPC),CN_Bulk,CFun_NN_Bulk,CFun_EN_Bulk,Fun_NN,Fun_EN,IsoTermKJoulePerMol1,IsoTermKJoulePerMol2,IsoTerm(3),IsoTermKJoulePerMol4, IsoTermKJoulePerMol5, IsoTermKJoulePerMol6, IsoTermKJoulePerMol7,IsoTermKJoulePerMol8, &
 !        write(13,713)iPC,P(iPC),CN_Bulk,CFun_NN_Bulk,CFun_EN_Bulk,Fun_NN,Fun_EN,IsoTermKJoulePerMol1,IsoTermKJoulePerMol2,IsoTerm(3),IsoTermKJoulePerMol4, IsoTermKJoulePerMol5, IsoTermKJoulePerMol6, IsoTermKJoulePerMol7,IsoTermKJoulePerMol8, &
   &     IsoTerm(9),  IsoTerm(10)  
-713     FORMAT(1x,I4,16E16.6)  
+713     FORMAT(1x,I4,16E16.6)
  ENDDO
-     
     
 
 !        call fluctuation(4)
@@ -1667,11 +1664,12 @@
      common/Box/PoreWidth,BoxLengthZ,CarbonLengthx1,CarbonLengthy1,BoxLength
      common/Volume/BulkVolume, AccVolume
      common/other/ SCALELENGTH, SCALEENERGY, GrapheneLayer
-     
      F(i,j,k) = NX*NY*(k-1)+NX*(j-1)+i 
 !    -----------------------------------------------
 !    NUMBER OF POSITION IN LINEAR DIMENSION (X AXIS)
 !    -----------------------------------------------
+    !!$OMP critical   
+
      CarbonLengthx1 = 4.26E0/SCALELENGTH* int(CarbonLength1/4.26E0)    
      NX             = int(CarbonLengthx1*SCALELENGTH/4.26E0)*2   
 !    -----------------------------------------------
@@ -1683,51 +1681,51 @@
 !    NUMBER OF AVALIABLE POSITIONS FOR CARBON IN CUBE IS NC3
 !    ---------------------------------------------------------
      NC1 = NX*NY*NZ1
-       
+ !!$OMP end critical   
 !    ---------------------------------------------------------
 !    ASSIGN THE COORDINATE OF NC3 POSITION IN CUBE
 !    ---------------------------------------------------------
-    
-     do 100 k = 1, NZ1, 2
-            do 100 j = 1, NY, 2
-                   do 100 i = 1, NX
-                      if(mod(i,2).eq.0)then
-                         offset = 1
-                      else
-                         offset = 0
-                      endif
-     iCount = F(i,j,k)
-     xc(iCount) = ((i-1-offset)*2.13E0 + offset*2.84E0 )/SCALELENGTH
-     yc(iCount) = ((j-1)*1.23E0)/SCALELENGTH
-     zc(iCount) = (k-1)*GrapheneLayer
-       
-100  continue     
-       
-     do 200 k = 1, NZ1, 2
-            do 200 j = 2, NY, 2
-                   do 200 i = 1, NX
-                      if(mod(i,2).eq.0)then
-                         offset = 0
-                      else
-                         offset = 1
-                      endif
-     iCount = F(i,j,k)
-     xc(iCount) = ((i-1)*2.13E0 + offset*0.71E0 )/SCALELENGTH
-     yc(iCount) = ((j-1)*1.23E0)/SCALELENGTH
-     zc(iCount) = (k-1)*GrapheneLayer
-       
-200  continue    
-       
-     do 300 k = 2, NZ1, 2
-            do 300 j = 1, NY
-                   do 300 i = 1, NX
-                     iCount = F(i,j,k)
-                     iiCount = F(i,j,k-1)
-     xc(iCount) =  xc(iiCount) + 0.71E0/SCALELENGTH  
-     yc(iCount) =  yc(iiCount) + 1.23E0/SCALELENGTH
-     zc(iCount) = (k-1)*GrapheneLayer
-       
-300  continue    
+   
+!     do 100 k = 1, NZ1, 2
+!            do 100 j = 1, NY, 2
+!                   do 100 i = 1, NX
+!                      if(mod(i,2).eq.0)then
+!                         offset = 1
+!                      else
+!                         offset = 0
+!                      endif
+!     iCount = F(i,j,k)
+!     xc(iCount) = ((i-1-offset)*2.13E0 + offset*2.84E0 )/SCALELENGTH
+!     yc(iCount) = ((j-1)*1.23E0)/SCALELENGTH
+!     zc(iCount) = (k-1)*GrapheneLayer
+!       
+!100  continue     
+!       
+!     do 200 k = 1, NZ1, 2
+!            do 200 j = 2, NY, 2
+!                   do 200 i = 1, NX
+!                      if(mod(i,2).eq.0)then
+!                         offset = 0
+!                      else
+!                         offset = 1
+!                      endif
+!     iCount = F(i,j,k)
+!     xc(iCount) = ((i-1)*2.13E0 + offset*0.71E0 )/SCALELENGTH
+!     yc(iCount) = ((j-1)*1.23E0)/SCALELENGTH
+!     zc(iCount) = (k-1)*GrapheneLayer
+!       
+!200  continue    
+!       
+!     do 300 k = 2, NZ1, 2
+!            do 300 j = 1, NY
+!                   do 300 i = 1, NX
+!                     iCount = F(i,j,k)
+!                     iiCount = F(i,j,k-1)
+!     xc(iCount) =  xc(iiCount) + 0.71E0/SCALELENGTH  
+!     yc(iCount) =  yc(iiCount) + 1.23E0/SCALELENGTH
+!     zc(iCount) = (k-1)*GrapheneLayer
+!       
+!:300  continue    
   
     return    
     end
@@ -1775,7 +1773,7 @@
             call random_number(rdn)
                 old = int(Npart*rdn) + 1
                 if(old .gt. Npart) old = Npart   
-            call energysingleparticle(0,old, EnergyOld, CLEnergyOld, EnergyCOld )
+           call energysingleparticle(0,old, EnergyOld, CLEnergyOld, EnergyCOld)
                 TEnergyOld = EnergyOld + CLEnergyOld + EnergyCOld 
                 arg = dble(Npart)*exp(TEnergyOld/Temperature)/(zactivity(iPC)*BulkVolume)
   !          arg1 = dble(Npart)*debro3*exp((TEnergyOld-Chemicalpotential(iPC))/Temperature)/BulkVolume
@@ -2054,11 +2052,13 @@
        USE MCSETTING_M
        USE BUCKINGHAM_M
        USE FLUCTUATION_M 
-       USE SUBBOX_M 
-       implicit none
-       
-       integer i, j,k,m, FLAG
+       USE SUBBOX_M
+       USE Constant_M
 
+implicit none
+!      double precision:: start, end 
+       integer chunk, cnt
+       integer i, j,k,m, FLAG
        real*8  Energy, EnergyC, CLEnergy
        real*8  d2, dc2,cld, distanceZ
        real*8  U, V,UC, CLU, CLV
@@ -2076,10 +2076,15 @@
        real*8  LJVectorX, LJVectorY, LJVectorZ, LJVectorX0, LJVectorY0, LJVectorZ0
        real*8  CLVectorX, CLVectorY, CLVectorZ, CLVectorX0, CLVectorY0, CLVectorZ0
        real*8  VectorProduct
-        
+       real*8 d1, d6, sigma1, welldepth1, term1, term2, term3
+       !      double precision:: start1, end1, omp_get_wtime,omp_get_thread_num
+       external omp_set_num_threads,omp_get_num_threads!, omp_get_thread_num!, omp_set_dynamic, omp_set_nested
+       integer omp_get_num_threads!, omp_get_thread_num
 !      --------------------------------
 !      INITIALISE THE ENERGY 
 !      --------------------------------
+  ! call omp_set_nested(.true.)
+  ! call omp_set_dynamic(.true.)
        Energy   = 0.0E0
        EnergyC  = 0.0E0
        ExtEnergy1   = 0.0E0
@@ -2089,9 +2094,39 @@
        VirialCL = 0.0E0
        VirialF  = 0.0E0
        VirialC  = 0.0E0
+!cnt= cnt+1
 !      ---------------------------------------------------
 !      INTERACTION ENERGY BETWEEN PARTICLE AND CARBON ATOM
-!      ---------------------------------------------------
+!      ---------------------------------------------------i
+!print*,'thread is',omp_get_thread_num
+!     if((npart .gt. 50) .and. (npart .le. 100)) then 
+!            call omp_set_num_threads(2) 
+!     endif
+!     if((npart .gt. 100) .and. (npart .le. 150)) then 
+!            call omp_set_num_threads(3) 
+!     endif
+!     if((npart .gt. 150) .and. (npart .le. 200)) then 
+!           call omp_set_num_threads(4) 
+!     endif
+!     if((npart .gt. 200) .and. (npart .le. 250)) then
+!           call omp_set_num_threads(5)
+!     endif
+!     if((npart .gt. 250) .and. (npart .le. 300)) then
+!           call omp_set_num_threads(6)
+!     endif
+!     if((npart .gt. 300) .and. (npart .le. 350)) then
+!           call omp_set_num_threads(7)
+!     endif
+!     if((npart .gt. 350) .and. (npart .le. 400)) then 
+!           call omp_set_num_threads(8)
+!      endif
+!     if((npart .gt. 400) .and. (npart .le. 450)) then
+!           call omp_set_num_threads(9)
+!     endif
+!     if(npart .gt. 450) then 
+!              call omp_set_num_threads(10) 
+!     endif
+
        IF((.NOT. ADSORPTION).OR.(.NOT. LOCALF).OR.(i .GT. Npart).OR. (flag.EQ.1))THEN
           if(steele)then
                 if(ExtraBin)then
@@ -2112,10 +2147,10 @@
 
 
           if(Bojan)then
-              do j = 1, NS 
+              do j = 1, NS
                   IF(ExtraBin)THEN
                      if(indNinSBox(i).lt.SubBox)then
-                        call BojanPotential(j, i,BU) 
+                        call BojanPotential(j, i,BU)
                         EnergyC = EnergyC + BU
                       endif
                   ELSE
@@ -2146,6 +2181,7 @@
                           enddo
                           call BojanPotential(j, i,BU) 
                           EnergyC = EnergyC + BU 
+! Where was VC set previously???
                           VirialC = VirialC + VC
                           mcy(i) = smcy 
                           do k = 1, NLJ
@@ -2225,9 +2261,39 @@
 !      ------------------------------------
 !      INTERACTION ENERGY BETWEEN PARTICLES
 !      ------------------------------------
-      if(i.gt.0) then   !! 1-if
-        if((.NOT. ADSORPTION).OR.(.NOT. LOCALF).OR.(i .GT. Npart) .OR. (FLAG .eq. 1))then  !! 2-if
-           do j = 1, Npart !! 1-do
+       
+! potentialEnergy does not change any globals.
+! coulombforce is pure.
+                   
+       if(i.gt.0) then   !! 1-if
+          if((.NOT. ADSORPTION).OR.(.NOT. LOCALF).OR.(i .GT. Npart) .OR. (FLAG .eq. 1))then  !! 2-if 
+!chunk = int(Npart/10
+!print*,'Npart = ',Npart
+           
+!$OMP  parallel  if(npart .gt. 50)                               &
+!$OMP&   private (cld,clu,clv,clvectorx,clvectorx0,clvectory,clvectory0, &
+!$OMP&            clvectorz,clvectorz0,d2,energycij,gsm,ljvectorx,   &
+!$OMP&            ljvectorx0,ljvectory,ljvectory0,ljvectorz,ljvectorz0,  &
+!$OMP&            mcd2,mcvectorx,mcvectorx0,mcvectory,mcvectory0,      &
+!$OMP&            mcvectorz,mcvectorz0,penergy,sigma,vectorproduct,    &
+!$OMP&            welldepth,xcl,xlj,xmclj,xmcn,ycl,ylj,ymclj,ymcn,zcl,   &
+!$OMP&            zlj,zmclj,zmcn, d6, d1, term1, term2, term3, j,k,m, U, V)  &
+!$OMP&   shared  (flag,i,clenergy,adsorption,boxlengthz,buckingham,      &
+!$OMP&            carbonlengthx1,carbonlengthy1,charges,clx,cly,clz,     &
+!$OMP&            energyci,energymatrix,extrabin,indninsbox,ksi,ksif,    &
+!$OMP&            ljx,ljy,ljz,localf,mcx,mcy,mcz,ncl,nlj,npart,pbcx,     &
+!$OMP&            pbcy,pbcz,r2cutoff,sfenergy,sigmaff,smediation1,       &
+!$OMP&            smediation2,smlimitz,subbox,temperature,welldepthff,  energymatrix, clenergy, &
+!$OMP&            rMin, rM, alpha_B, scaleLength, scaleEnergy, permittivity, pi, kB)
+
+!$OMP do schedule(static) reduction (+:energy) reduction (+:extclenergy1)reduction (+:extenergy1)reduction (+:virial)reduction (+:virialcl)reduction (+:virialf) 
+          do j = 1, Npart !! 1-do
+             !if((npart .gt. 200) .and. (npart .lt. 300)) then
+             !  if(omp_get_thread_num() .eq. 5) then
+             !    print*,'num threads =',omp_get_num_threads(),'npart =',npart
+             !  endif
+             !endif
+
               if(ExtraBin)then
                 if( (indNinSBox(i).eq.SubBox) .and. (indNinSBox(j).lt.SubBox) )CYCLE
                 if( (indNinSBox(i).lt.SubBox) .and. (indNinSBox(j).eq.SubBox) )CYCLE
@@ -2280,13 +2346,18 @@
                              EnergyMatrix(i,j) = 0.0e0
                              EnergyMatrix(j,i) = 0.0e0
                            endif
-                        ENDIF
+                       ENDIF
 !                    EnergyMatrix(i,j) = 0.0e0
 !                    EnergyMatrix(j,i) = 0.0e0
                    CYCLE
                 else
-                  do k=1,NLJ
-                     do m = 1, NLJ
+
+                do k=1,NLJ
+                  do m = 1, NLJ
+                ! NLJ is less than 20, so no need to introduce opnemp pragmas here
+                ! if(nlj .gt. 20) then 
+                !      print*, 'NLJ =', NLJ
+                ! endif 
                         sigma = (sigmaFF(k) + sigmaFF(m))/2.0e0
                         welldepth = sqrt(welldepthFF(k)*welldepthFF(m))
 !                       --------------------
@@ -2334,8 +2405,8 @@
 !                  ----------------
 !                  POTENTIAL ENERGY
 !                  ----------------
-                     call potentialEnergy(d2, sigma, welldepth,U, V)
-                        VectorProduct = MCVectorX*LJVectorX + MCVectorY*LJVectorY + MCVectorZ*LJVectorZ
+                    call potentialEnergy(d2, sigma, welldepth,U, V)
+                     VectorProduct = MCVectorX*LJVectorX + MCVectorY*LJVectorY + MCVectorZ*LJVectorZ
                         V = V*VectorProduct/d2
                         if(SMediation1)then
                           EnergyCij = sqrt(EnergyCi*SFEnergy(j))
@@ -2357,8 +2428,7 @@
                         Virial = Virial + V
                         IF(indNinSBox(j).eq.SubBox)VirialF = VirialF + V
                    enddo
-                enddo 
-                
+                enddo
            !!---------------------------------------------
            !! Coulombs force
            !!---------------------------------------------
@@ -2398,9 +2468,7 @@
                               endif
                          endif
                          cld = sqrt(xcl*xcl + ycl*ycl + zcl*zcl)
-                         call coulombforce(cld, charges(k),charges(m),CLU,CLV)
-                         VectorProduct = MCVectorX*CLVectorX + MCVectorY*CLVectorY + MCVectorZ*CLVectorZ
-                         CLV = CLV*VectorProduct/cld**2.0
+                        call coulombforce(cld, charges(k),charges(m),CLU,CLV)
                          if(SMediation1)then
                            EnergyCij = sqrt(EnergyCi*SFEnergy(j))
                            gSM = exp(-ksi*EnergyCij/Temperature)
@@ -2433,8 +2501,10 @@
                            endif
                         ENDIF
              endif  !! 5-if
-            enddo  !! 1-do
-          else  !! 2-if
+           enddo  !! 1-do
+!$OMP END DO NOWAIT
+!$OMP END PARALLEL  
+       else  !! 2-if
             do j = 1, Npart
                if(j .NE. i)then
                Energy = Energy + EnergyMatrix(i,j)
@@ -2442,8 +2512,7 @@
                endif
              enddo     
           endif !! 2-if
-        endif   !! 1-if
-
+       endif   !! 1-if
 
      return
      end  subroutine energysingleparticle              
@@ -2761,6 +2830,7 @@
                        call BojanPotential(j, i,BU) 
                        EnergyC = EnergyC + BU
                        PEnergyC = PEnergyC + BU 
+! Where was VC set???
                        VirialC = VirialC + VC
                        mcy(i) = smcy 
                        do k = 1, NLJ
@@ -2859,10 +2929,12 @@
       USE  BUCKINGHAM_M
       implicit none
       
+      intent(in) :: d2,sigma1,welldepth1
+      intent(out) :: U,V
+
       real*8 d1, d2, d6, U,V
       real*8 sigma1, welldepth1
       real*8 term1, term2, term3
-      
       if(.NOT. BUCKINGHAM)then      
 !          ----------------------------------
 !          LENNARD-JONES 12-6 POTENTIAL MODEL
@@ -2882,8 +2954,7 @@
            
            U = term3*(6.0e0*term1/alpha_B - term2)
            V = 2.0e0*term3*(d1*term1/rM - term2)
-       endif       
-     
+       endif  
      return
      end
       
@@ -3326,7 +3397,8 @@
                      ECLy(i,j) = ECLy(new,j)
                      ECLz(i,j) = ECLz(new,j)
                   enddo
-                   do j = 1, Npart
+!!$OMP  parallel do private (j) shared  (adsorption,energymatrix,i,localf,new,npart)
+                  do j = 1, Npart
                       if(j.ne.i)then
                         IF(Adsorption.AND. LOCALF)THEN
                         EnergyMatrix(i,j) = EnergyMatrix(new,j)
@@ -4265,6 +4337,8 @@
     
        integer i,j, k 
        
+       intent(in) :: i
+       intent(out) :: Energy
        real*8 Energy, iEnergy, rhosperM3, rho_s
        real*8 mcdistanceZ,distanceZ
        real*8 SigmaSF, WellDepthSF
@@ -4274,13 +4348,12 @@
        rhosperM3     = 114.0E27
        
        Energy = 0.0e0
-       
        rho_s         = rhosperM3*((SCALELENGTH*1.0E-10)**3)
 !       if(mcdistanceZ.gt.rcutoff)then
 !         Energy = 0.0E0
 !         return
 !       endif
-       
+       !$OMP critical !critical
        DO k = 1, Nsteele
          do j=1,NLJ
             sigmaSF     = (sigmaFF(j) + sigmaSS)/2.0e0
@@ -4299,6 +4372,7 @@
           call decayfcalculation(i,decayf)
           Energy = Energy*decayf
        ENDIF
+!$OMP end critical
        return
        end 
        
@@ -4341,12 +4415,12 @@
            common/FORRD3/Av_mcBin,Av_NNBin,Av_mcNBin
            common/FORRD3/mcBin_ML,TotmcBin_ML,Av_mcBin_ML
            common/FORRD4/mcBin_SL,TotmcBin_SL,Av_mcBin_SL
-           
+       !$OMP critical    
            deltaBin   = 0.1e0/scalelength
            radiusB    = BoxLength/2.0e0  
            RmaxBin     = int(radiusB/deltaBin) 
            MLBin      = int(6.0/scalelength/deltaBin)+1
-           
+       !$OMP end critical
            IF(switch.eq.0)THEN
                open(unit=29, file='radius.txt',status='unknown')
            ENDIF
@@ -4541,20 +4615,22 @@
 !   SUBROUTINE COULOMB FORCE
 !
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
-        subroutine coulombforce(cld, charge1,charge2,CLU,CLV)
+        pure subroutine coulombforce(cld, charge1,charge2,CLU,CLV)
         USE Constant_M
         USE MCSETTING_M
         implicit none
-        
+
+        intent(in) :: cld,charge1,charge2
+        intent(out) :: CLU,CLV
         real*8 cld,charge1,charge2, CLU,CLV
         
                 
 !        if((cld.lt.0.4e0) .AND. (charge1*charge2.lt.0.0e0))then
 !           CLU = 1.0e10
 !           return
-!        else       
+!        else      
         CLU = charge1*charge2/(4.0e0*pi*permittivity*Scalelength*1.0e-10*scaleEnergy*kB*cld)
-        CLV = CLU/3.0
+        CLV = CLU/3.0d0
 !        endif
         return
         end
@@ -4566,10 +4642,16 @@
 !
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++               
      subroutine BojanPotential(bi,i,BU) 
-     USE Constant_M
-     USE FLUID_SOLID_M
-     USE MCSETTING_M
-     USE POREFIGURE_M
+     USE Constant_M, only:pi
+     USE FLUID_SOLID_M, only:BdeltaZ,Ny,StripW,rhosperM2,subforce,LJz,Py,StripC, &
+         LJy,BwelldepthSS,welldepthFF,BsigmaSS,sigmaFF,BsigmaSF,NLJ,BojanSlit,StripLy, &
+         tan_StripAngleY,StripAngleY,cos_StripAngleY,Stripgap,StripZ0,TopStrip,StriplayerN, &
+         NS
+     USE MCSETTING_M, only:CarbonLengthy1,Close2Ends,BoxlengthZ,Clo1Hard,Close1End
+     USE POREFIGURE_M, only:Clo2rhosperM2,Clo2LayerN,Clo2LengthZ,Clo2Mid_z,Clo2welldepthSS, &
+         Clo2sigmaSS,Clo2gap,Clo1rhosperM2,Clo1gap,Clo1LayerN,Clo1LengthZ,Clo1welldepthSS, &
+         Clo1sigmaSS,Clo1Mid_z,IncrhosperM2,Incgap,IncLayerN,IncLengthY, &
+         IncMid_y,IncCornerZ,Inc_A,Inc_B,Inc_C,IncwelldepthSS,IncsigmaSS
      implicit none
      
      integer bi, i, j, k
@@ -4630,20 +4712,28 @@
              endif
            enddo
         ENDIF
-                       
+
+! Lines after !!! contains assignment to a module variable.
+!$OMP critical
        do k = 1, NLJ
            IF(bi.le.NS)THEN
               totforce   = 0.0e0             
+!!!
               BsigmaSF = (sigmaFF(k)+BsigmaSS(bi))/2.0e0
               BwelldepthSF = sqrt(welldepthFF(k)*BwelldepthSS(bi))
               IF(StripAngleY(bi).eq.0.0)THEN
                   Cy =  LJy(i,k) - StripC(bi)          
+!!!
                   Py =  StripW(bi)/2.0e0 - Cy    ! the y coordinates of the right-hand edge and left-hand edge relative to the fluid particle
+!!!
                   Ny = -StripW(bi)/2.0e0 - Cy    ! Py: positive y, Ny: negative y, give the location of the edges of the strip relative to the position of the adsorbate
           
                   do j = 1, layerTotal
+!!!
                      BdeltaZ = abs(Cz(j)-LJz(i,k)) ! the distance between a LJ site and one of the strips in the z direction
+!!!
                      call BojanCalculation          
+!!!
                      totforce = totforce + subforce
                   enddo
               ELSE
@@ -4651,12 +4741,18 @@
                      VLine_A2(j) = Line_B1(j)/Line_A1(j)
                      VLine_B2(j) = -1.0E0
                      VLine_C2(j) = LJz(i,k)-VLine_A2(j)*LJy(i,k) 
+!!!
                      BdeltaZ = abs(Line_A1(j)*LJy(i,k) + Line_B1(j)*LJz(i,k)+Line_C1(j))/sqrt(Line_A1(j)**2.0 + Line_B1(j)**2.0)
                      Project_y = ( Line_B1(j)*VLine_C2(j) - VLine_B2(j)*Line_C1(j) )/ (Line_A1(j)*VLine_B2(j) - VLine_A2(j)*Line_B1(j))
+!!!
                      Cy = (  Project_y - StripC(bi) )/cos_StripAngleY(bi)
+!!!
                      Py = (  StripW(bi)/2.0e0 )/cos_StripAngleY(bi) - Cy
+!!!
                      Ny = ( -StripW(bi)/2.0e0 )/cos_StripAngleY(bi) - Cy
+!!!
                      call BojanCalculation          
+!!!
                      totforce = totforce + subforce
                   enddo
               ENDIF
@@ -4666,16 +4762,22 @@
  
           IF(bi.eq.NS+1)then   ! For InclinPore
              Inctotforce = 0.0e0
+!!!
              BsigmaSF = (sigmaFF(k)+IncsigmaSS)/2.0e0
              BwelldepthSF = sqrt(welldepthFF(k)*IncwelldepthSS)
              DisP_L = abs(Inc_A*LJy(i,k)+Inc_B*LJZ(i,k)+Inc_C)/sqrt(Inc_A**2.0+Inc_B**2)
              DisP_CZ = sqrt(LJy(i,k)**2.0 + (LJZ(i,k)-IncCornerZ)**2.0)
              DisCy = sqrt(DisP_CZ**2.0-DisP_L**2.0)
+!!!
              Cy = DisCy - IncMid_y
+!!!
              Py =  IncLengthY/2.0e0 - Cy
+!!!
              Ny = -IncLengthY/2.0e0 - Cy
              do j = 1, IncLayerN
+!!!
                 BdeltaZ = DisP_L + (j-1)*Incgap
+!!!
                 call BojanCalculation
                 Inctotforce = Inctotforce + subforce
              enddo
@@ -4688,13 +4790,19 @@
                  IF(Clo1Hard)Then
                     Clo1totforce = 0.0e0
                  ELSE
+!!!
                     BsigmaSF = (sigmaFF(k)+Clo1sigmaSS)/2.0e0
                     BwelldepthSF = sqrt(welldepthFF(k)*Clo1welldepthSS)   
+!!!
                     Cy =  LJZ(i,k)- Clo1Mid_z
+!!!
                     Py =  Clo1LengthZ/2.0e0 - Cy
+!!!
                     Ny = -Clo1LengthZ/2.0e0 - Cy
                     do j = 1, Clo1LayerN
+!!!
                        BdeltaZ = LJy(i,k)+(j-1)*Clo1gap + Clo1gap ! Add the gap between the pore walls and the closed end
+!!!
                        call BojanCalculation
                        Clo1totforce = Clo1totforce + subforce
                     enddo
@@ -4703,14 +4811,20 @@
              ENDIF
              IF(Close2Ends)THEN
                  Clo2totforce = 0.0e0
+!!!
                  BsigmaSF = (sigmaFF(k)+Clo2sigmaSS)/2.0e0
                  BwelldepthSF = sqrt(welldepthFF(k)*Clo2welldepthSS)   
                  Cy =  LJZ(i,k)- Clo2Mid_z
+!!!
                  Py =  Clo2LengthZ/2.0e0 - Cy
+!!!
                  Ny = -Clo2LengthZ/2.0e0 - Cy
                  do j = 1, Clo2LayerN
+!!!
                     BdeltaZ = CarbonLengthy1-LJy(i,k)+(j-1)*Clo2gap + Clo2gap ! Add the gap between the pore walls and the closed end
+!!!
                     call BojanCalculation
+!!!
                     Clo2totforce = Clo2totforce + subforce
                  enddo
                  BU = BU + 2.0e0*pi*Clo2rhosperM2*(BsigmaSF**2.0e0)*BwelldepthSF*Clo2totforce
@@ -4718,6 +4832,7 @@
          ENDIF
           
        enddo
+!$OMP end critical
     return
     end         
 !+++++++++++++++++++++++++++++++++++++
@@ -4767,9 +4882,11 @@
 !      SUBROUTINE Bojan Repulsion and attraction
 !
 !+++++++++++++++++++++++++++++++++++++++++++++++++             
-       subroutine Brepatt (y, z, BsigmaSF, Repulsion, Attraction)
+       pure subroutine Brepatt (y, z, BsigmaSF, Repulsion, Attraction)
        implicit none
        
+       intent(in) :: z,y,BsigmaSF
+       intent(out) :: Repulsion, Attraction
        real*8 y,z,z2,sumy2z2
        real*8 Repulsion, Attraction
        real*8 BsigmaSF
@@ -5071,9 +5188,10 @@
        bb_B = -0.387513e0
        cc_B = 0.019765e0
        dd_B = -3.501142e-4
-       
+      !$OMP critical 
        rM = sigmaFF(1)/( a_B + b_B*alpha_B + c_B*alpha_B**2 + d_B*alpha_B**3 )
        rMin = ( aa_B + bb_B*alpha_B + cc_B*alpha_B**2 + dd_B*alpha_B**3 )*rM
+       !$OMP END critical
        return
        end SUBROUTINE BuckinghamExp6
        
@@ -5095,8 +5213,8 @@
        real*8 distanceZ
        real*8 reducedX, Fun_pentagamma, term1, term2
               
-       Energy = 0.0e0    
-       
+       Energy = 0.0e0
+!$OMP critical    
        do j=1,NLJ
             distanceZ      = abs(LJz(i,j))
             if(distanceZ .lt. GrapheneLayer/5.0e0)then
@@ -5118,7 +5236,7 @@
             endif
           Energy = Energy + iEnergy
        enddo
- 
+!$OMP end critical
        return
        end SUBROUTINE CrowellChangPotential
 
@@ -5178,7 +5296,7 @@
   
      logical steele, Bojan 
          
-    
+    !$OMP critical
      
        KJ       = ScaleEnergy*kB/1.0e3  !! Used to convert the reduced unit to KJ
        KJpermol = ScaleEnergy*Rg/1.0e3  !! Used to convert the reduced unit to KJ/mol
@@ -5189,11 +5307,12 @@
        VolBin   = CarbonLengthx1*CarbonLengthy1*deltaZ !!* Volume of each bin(-)
        LayerB1  = BoxlengthZ/2.0e0
        LayerB2  = BoxlengthZ
-     if(switch.eq.0)then
+!$OMP end critical
+      if(switch.eq.0)then
        Allocate(dz(maxbin),dzA(maxbin),DDensity(maxbin),DDensityKmolperM3(maxbin))
        Allocate(UFFinBin(maxbin),USFinBin(maxbin))
        Allocate(sum_Ninbin(maxbin), sum_UFFinBin(maxbin), sum_USFinBin(maxbin))
-!       Allocate(sum_NNinBin(maxbin), sum_UFFNinBin(maxbin), sum_USFNinBin(maxbin))
+       Allocate(sum_NNinBin(maxbin), sum_UFFNinBin(maxbin), sum_USFNinBin(maxbin))
        Allocate(SumUFFKLofBin(maxbin), LocalEnergy(maxbin))
        Allocate(UFF1toBin(maxbin), USF1toBin(maxbin), UFFout1toBin(maxbin), N1toBin(maxbin))
        Allocate(sum_SumUFFKLofBin(maxbin), sum_SumUFFKLNofBin(maxbin))
@@ -5527,6 +5646,5 @@
            DEAllocate(LocalE)
            DEAllocate(UFFKL)
         endif
-     
    return
    end
