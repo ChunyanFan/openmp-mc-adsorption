@@ -324,20 +324,11 @@
       650       format(1x,'  deltaRy:',e11.4, '  deltaRz:',e11.4)
              endif
              if(.NOT. FlexiCL)RdmCL = 0.0E0
-
-!$OMP  parallel default(none) shared(nmove, NUMBEROFEQUILIBRIUM,SDisplace, RdmCL,SUM_NPART,NPART)                                       &
-!$OMP&   private (NUMOFINSERT,SUCCESSINSERT,NUMOFDELETE,              &
-!$OMP&            SUCCESSDELETE,NUMBEROFMOVE,NUMBEROFACCEPTANCEMOVE,     &
-!$OMP&            IEQUI,I,RDN,ENERGYTOTAL,           &
-!$OMP&            TOTACCEPTANCERATIO,ENERGY,CLENERGY,ENERGYC,TENERGY,    &
-!$OMP&            ACCEPTANCERATIO,IPC,DELTARX,DELTARY,   &
-!$OMP&            DELTARZ,FLEXICL,NCYCLE,P,SUBBOX, &
-!$OMP&            SUCMOVEIN,SUCMOVEOUT)
+!!$OMP    parallel         &
+!!$OMP&   default(none) shared(npart, rdn, TEnergy,Energy,CLEnergy,EnergyC, numofinsert, &
+!!$OMP&   successinsert,numofdelete,successdelete, SDisplace, Nmove, RdmCL,P, sum_npart, numberOfAcceptanceMove, numberofmove, numberofequilibrium, SubBox, i ,IPC, SUCMOVEIN, SUCMOVEOUT, energytotal)  private (iMove)
               do iMove = 1, Nmove
-                 !print*,'iMove=',imove !Nmove is 1000
-!$OMP single
-                call random_number(rdn)
-!$OMP end single
+                 call random_number(rdn)
                 if(rdn.lt.RdmCL)then
                    call CLMove(TEnergy,Energy,CLEnergy,EnergyC)
                 else if (rdn .ge. RdmCL .AND. rdn .le. (1.0+2.0*RdmCL)/3.0E0)then
@@ -346,15 +337,13 @@
                    call mcexc(TEnergy,Energy, CLEnergy,EnergyC, numofinsert, &
             &              successinsert,numofdelete,successdelete)
                 endif
-!$OMP atomic
                 numberofequilibrium = numberofequilibrium + 1.0e0
-!$OMP end atomic
                 IF(SDisplace)THEN
                    if((mod(numberofequilibrium,100000).eq.0).and.(numberofequilibrium.LE.1E7))then  
-!$OMP critical
+!!$OMP critical
                      write(23,316)P(iPC),numberofequilibrium,(SucMovein(i)-SucMoveout(i),i=1,SubBox), EnergyTotal/numberofequilibrium 
 316                    FORMAT(1x,E11.4,I12,15E14.4,E14.4) 
-!$OMP end critical
+!!$OMP end critical
                        SucMovein = 0
                        SucMoveout = 0
                    endif
@@ -367,7 +356,7 @@
 
              enddo
 !!$OMP end do nowait
-!$OMP end parallel 
+!!$OMP end parallel 
              call adjustment(iEqui,numberOfMove, numberOfAcceptanceMove,AcceptanceRatio)
              totAcceptanceRatio = totAcceptanceRatio + AcceptanceRatio
          
@@ -2099,33 +2088,33 @@ implicit none
 !      INTERACTION ENERGY BETWEEN PARTICLE AND CARBON ATOM
 !      ---------------------------------------------------i
 !print*,'thread is',omp_get_thread_num
-!     if((npart .gt. 50) .and. (npart .le. 100)) then 
-!            call omp_set_num_threads(2) 
-!     endif
-!     if((npart .gt. 100) .and. (npart .le. 150)) then 
-!            call omp_set_num_threads(3) 
-!     endif
-!     if((npart .gt. 150) .and. (npart .le. 200)) then 
-!           call omp_set_num_threads(4) 
-!     endif
-!     if((npart .gt. 200) .and. (npart .le. 250)) then
-!           call omp_set_num_threads(5)
-!     endif
-!     if((npart .gt. 250) .and. (npart .le. 300)) then
-!           call omp_set_num_threads(6)
-!     endif
-!     if((npart .gt. 300) .and. (npart .le. 350)) then
-!           call omp_set_num_threads(7)
-!     endif
-!     if((npart .gt. 350) .and. (npart .le. 400)) then 
-!           call omp_set_num_threads(8)
-!      endif
-!     if((npart .gt. 400) .and. (npart .le. 450)) then
-!           call omp_set_num_threads(9)
-!     endif
-!     if(npart .gt. 450) then 
-!              call omp_set_num_threads(10) 
-!     endif
+     if((npart .gt. 50) .and. (npart .lt. 100)) then 
+            call omp_set_num_threads(2) 
+     endif
+     if((npart .gt. 100) .and. (npart .lt. 150)) then 
+            call omp_set_num_threads(3) 
+     endif
+     if((npart .gt. 150) .and. (npart .lt. 200)) then 
+           call omp_set_num_threads(4) 
+     endif
+     if((npart .gt. 200) .and. (npart .lt. 250)) then
+           call omp_set_num_threads(5)
+     endif
+     if((npart .gt. 250) .and. (npart .lt. 300)) then
+           call omp_set_num_threads(6)
+     endif
+     if((npart .gt. 300) .and. (npart .lt. 350)) then
+           call omp_set_num_threads(7)
+     endif
+     if((npart .gt. 350) .and. (npart .lt. 400)) then 
+           call omp_set_num_threads(8)
+      endif
+     if((npart .gt. 400) .and. (npart .lt. 450)) then
+           call omp_set_num_threads(9)
+     endif
+     if(npart .gt. 450) then 
+              call omp_set_num_threads(10) 
+     endif
 
        IF((.NOT. ADSORPTION).OR.(.NOT. LOCALF).OR.(i .GT. Npart).OR. (flag.EQ.1))THEN
           if(steele)then
@@ -2286,7 +2275,7 @@ implicit none
 !$OMP&            smediation2,smlimitz,subbox,temperature,welldepthff,  energymatrix, clenergy, &
 !$OMP&            rMin, rM, alpha_B, scaleLength, scaleEnergy, permittivity, pi, kB)
 
-!$OMP do schedule(static) reduction (+:energy) reduction (+:extclenergy1)reduction (+:extenergy1)reduction (+:virial)reduction (+:virialcl)reduction (+:virialf) 
+!$OMP DO schedule(static) reduction (+:energy)reduction(*:U,V,clu)reduction (+:extclenergy1)reduction (+:extenergy1)reduction (+:virial)reduction (+:virialcl)reduction (+:virialf) 
           do j = 1, Npart !! 1-do
              !if((npart .gt. 200) .and. (npart .lt. 300)) then
              !  if(omp_get_thread_num() .eq. 5) then
