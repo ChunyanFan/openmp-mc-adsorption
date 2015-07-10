@@ -37,7 +37,7 @@
 .TRUE.                !pbcx  if use periodic boundary condition in x .TRUE.-use pbc, .FALSE.-don't use pbc
 .TRUE.               !pbcy  if use periodic boundary condition in y .TRUE.-use pbc, .FALSE.-don't use pbc
 .FALSE.               !pbcz  if use periodic boundary condition in z .TRUE.-use pbc, .FALSE.-don't use pbc
-1000                 !Ncycle       number of cycle for equilibriation
+500                 !Ncycle       number of cycle for equilibriation
 10                 !Ncycles      number of cycle for simpling 
 0.2E0                 !!!AccRatio = the Ratio of displacement to adjust the move steplength   
 10                    !!!MaxLayer = the bin numbers in the adsorption phase  

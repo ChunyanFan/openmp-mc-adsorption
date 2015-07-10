@@ -1,0 +1,46 @@
+.FALSE.                        BojanSlit, if form slit pores, .TRUE.-yes  .FALSE.-no
+.FALSE.                       BoPBCy,  if use periodic boundary condition for Bojan strip in y direction, .TRUE.-yes  .FALSE.-no
+3                             NS,  Number of Strips   z position of top layer/center/width/number of layers/gap/SigmaSS/WelldepthSS/
+.FALSE.                        /---If 1st strip is on the top of the simulation box TopStrip(i)
+6.708e0                       /---z of top layer of first strip   StripZ0(i)
+130.0E0                       /---y-coordinate of center of first strip  StripC(i)
+200.0E0                       /---width of 1st strip  StripW(i)
+3                             /---layers of 1st strip  StriplayerN(i)
+3.354E0                       /---gap between layers of 1st strip Stripgap(i)
+3.40E0                        /---SigmaSS collision diameter of 1st strip  BsigmaSS(i)
+28.0E0                        /---WelldepthSS  welldepth of 1st strip BwelldepthSS(i)
+38.2E18                       /---Surface density of 1st strip rhosperM2(i) : (1/m2)
+0.0e0                         /---Angle formed with the y- direction: (degree)
+===============For 2nd Strip================================================
+.FALSE.                       **--If 2nd strip is on the top of the simulation box 
+28.416e0                   **--z of top layer of 2nd strip    StripZ0(i)
+130.0E0                       **--y-coordinate of center of 2nd strip
+200.0E0                        **--width of 2nd  strip
+3                             **--layer of 2nd  strip
+3.354E0                       **--gap between layers of 2nd  strip
+3.40E0                        **--SigmaSS collision diameter of 2nd  strip
+28.0E0                        **--WelldepthSS  welldepth of 2nd  strip
+38.2E18                       **--Surface density of 2nd strip 
+0.0e0                    **--Angle fromed with the y- direction: (degree)
+===============For 3rd Strip================================================
+.FALSE.                       If 3rd strip is on the top of the simulation box
+50.124e0                   z of top layer of 3rd strip    StripZ0(i)
+130.0E0                       y-coordinate of center of 3rd strip
+200.0E0                        width of 3rd strip
+3                             layer of 3rd strip
+3.354E0                       gap between layers of 3rd strip
+3.40E0                        SigmaSS collision diameter of 3rd strip
+28.0E0                        WelldepthSS  welldepth of 3rd strip
+38.2E18                       Surface density of 3rd strip
+0.0e0                         Angle fromed with the y- direction: (degree)
+===============For 4th Strip================================================
+.TRUE.                        ==If 4th strip is on the top of the simulation box
+30.0e0                        ==z of top layer of 4th strip
+40.0E0                        ==y-coordinate of center of 4th strip
+40.0E0                        ==width of 4th strip
+3                             ==layer of 4th strip
+3.354E0                       ==gap between layers of 4th strip
+3.40E0                        ==SigmaSS collision diameter of 4th strip
+28.0E0                        ==WelldepthSS  welldepth of 4th strip
+38.2E18                       ==Surface density of 4th strip
+0.0e0                         ==Angle fromed with the y- direction: (degree)

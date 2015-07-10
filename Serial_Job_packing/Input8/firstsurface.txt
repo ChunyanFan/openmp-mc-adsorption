@@ -1,0 +1,13 @@
+34.05E+00	CarbonLengthx1	(A)	!IF	FOR	"GCMC,"	THIS	IS	FOR	BULKPHASE
+260.0E+00	CarbonLengthy1	(A)	!IF	FOR	"GCMC,"	THIS	IS	FOR	BULKPHASE
+33.416E+00	BoxLengthZ	(A)	!IF	FOR	"GCMC,"	THIS	IS	FOR	BULKPHASE
+34.05E0	        CarbonLengthx1								
+260.0E0	        CarbonLengthy1								
+33.416e0        BoxLengthZ	(A)
+30.0E0        	AccVYL ! The Lower boundary in y direction for the acc Volume	
+230.0E0		AccVYH ! The Higher boundary in y direction for the acc Volume	///10.0E0          ExBinz ! The length of the extra bin in z- direction 
+0	        "NC3,"	number	of carbon atoms	
+0.00e0          DecayLY
+0.00e0          DecayHY
+0.00e0          CollectLY
+0.00e0          CollectHY 

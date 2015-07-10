@@ -1,4 +1,3 @@
-
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -62,7 +61,8 @@
     real*8, Dimension(:),POINTER::dz,dzA,DDensity,DDensityKmolperM3  
   
      integer omp_get_thread_num
-              
+     external omp_get_wtime
+     double precision:: ostart, oend, omp_get_wtime
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
 !     FILE FOR ISOSTERIC HEAT
@@ -324,11 +324,18 @@
       650       format(1x,'  deltaRy:',e11.4, '  deltaRz:',e11.4)
              endif
              if(.NOT. FlexiCL)RdmCL = 0.0E0
-!!$OMP    parallel         &
-!!$OMP&   default(none) shared(npart, rdn, TEnergy,Energy,CLEnergy,EnergyC, numofinsert, &
-!!$OMP&   successinsert,numofdelete,successdelete, SDisplace, Nmove, RdmCL,P, sum_npart, numberOfAcceptanceMove, numberofmove, numberofequilibrium, SubBox, i ,IPC, SUCMOVEIN, SUCMOVEOUT, energytotal)  private (iMove)
+
+!$OMP parallel &
+!$OMP&   private(imove, NUMBEROFEQUILIBRIUM,sum_Npart, EnergyTotal) &
+!$OMP&   shared(rdn, nmove, rdmcl,npart, tenergy)&
+!$OMP& private(sucmovein, sucmoveout, p, ipc,i,subbox)
+
+!$OMP do schedule(static) ordered 
+! ostart=omp_get_wtime()
               do iMove = 1, Nmove
-                 call random_number(rdn)
+!print*,'iMove=',imove !Nmove is 1000
+!$OMP ordered
+                call random_number(rdn)
                 if(rdn.lt.RdmCL)then
                    call CLMove(TEnergy,Energy,CLEnergy,EnergyC)
                 else if (rdn .ge. RdmCL .AND. rdn .le. (1.0+2.0*RdmCL)/3.0E0)then
@@ -337,26 +344,27 @@
                    call mcexc(TEnergy,Energy, CLEnergy,EnergyC, numofinsert, &
             &              successinsert,numofdelete,successdelete)
                 endif
-                numberofequilibrium = numberofequilibrium + 1.0e0
+!!$OMP ordered
+               numberofequilibrium = numberofequilibrium + 1.0e0
                 IF(SDisplace)THEN
                    if((mod(numberofequilibrium,100000).eq.0).and.(numberofequilibrium.LE.1E7))then  
-!!$OMP critical
                      write(23,316)P(iPC),numberofequilibrium,(SucMovein(i)-SucMoveout(i),i=1,SubBox), EnergyTotal/numberofequilibrium 
 316                    FORMAT(1x,E11.4,I12,15E14.4,E14.4) 
-!!$OMP end critical
                        SucMovein = 0
                        SucMoveout = 0
                    endif
                 ENDIF
-                
                 sum_Npart = sum_Npart + Npart
                 if(Npart .ne. 0)then
                 EnergyTotal = EnergyTotal + TEnergy/dble(Npart)
                 endif
-
+!$OMP end ordered
              enddo
 !!$OMP end do nowait
-!!$OMP end parallel 
+!$OMP end  do 
+!$OMP end parallel
+!  oend =omp_get_wtime()
+!     print*,'OpenNP elapsed time', oend-ostart, 'thread num =', omp_get_thread_num
              call adjustment(iEqui,numberOfMove, numberOfAcceptanceMove,AcceptanceRatio)
              totAcceptanceRatio = totAcceptanceRatio + AcceptanceRatio
          
@@ -1184,7 +1192,6 @@
                   write(1,644)Npart,totAcceptanceRatio/dble(iEqui),deltaRx
       644         format(1x,'Npart(-):',I5, ' Ratio:',f15.5, '  deltaR:',f10.6)
                endif
-         
          
                do iMove = 1, Nmove     
                   call mcMove(TEnergy,Energy,CLEnergy,EnergyC, numberOfMove, numberOfAcceptanceMove)
@@ -2045,8 +2052,7 @@
        USE Constant_M
 
 implicit none
-!      double precision:: start, end 
-       integer chunk, cnt
+      double precision:: start, end 
        integer i, j,k,m, FLAG
        real*8  Energy, EnergyC, CLEnergy
        real*8  d2, dc2,cld, distanceZ
@@ -2083,38 +2089,36 @@ implicit none
        VirialCL = 0.0E0
        VirialF  = 0.0E0
        VirialC  = 0.0E0
-!cnt= cnt+1
-!      ---------------------------------------------------
-!      INTERACTION ENERGY BETWEEN PARTICLE AND CARBON ATOM
-!      ---------------------------------------------------i
-!print*,'thread is',omp_get_thread_num
-     if((npart .gt. 50) .and. (npart .lt. 100)) then 
-            call omp_set_num_threads(2) 
-     endif
-     if((npart .gt. 100) .and. (npart .lt. 150)) then 
-            call omp_set_num_threads(3) 
-     endif
-     if((npart .gt. 150) .and. (npart .lt. 200)) then 
-           call omp_set_num_threads(4) 
-     endif
-     if((npart .gt. 200) .and. (npart .lt. 250)) then
-           call omp_set_num_threads(5)
-     endif
-     if((npart .gt. 250) .and. (npart .lt. 300)) then
-           call omp_set_num_threads(6)
-     endif
-     if((npart .gt. 300) .and. (npart .lt. 350)) then
-           call omp_set_num_threads(7)
-     endif
-     if((npart .gt. 350) .and. (npart .lt. 400)) then 
-           call omp_set_num_threads(8)
-      endif
-     if((npart .gt. 400) .and. (npart .lt. 450)) then
-           call omp_set_num_threads(9)
-     endif
-     if(npart .gt. 450) then 
-              call omp_set_num_threads(10) 
-     endif
+     ! ---------------------------------------------------
+     ! INTERACTION ENERGY BETWEEN PARTICLE AND CARBON ATOM
+     !---------------------------------------------------i
+!     if((npart .gt. 50) .and. (npart .le. 100)) then 
+!            call omp_set_num_threads(2) 
+!     endif
+!     if((npart .gt. 100) .and. (npart .le. 150)) then 
+!            call omp_set_num_threads(3) 
+!     endif
+!     if((npart .gt. 150) .and. (npart .le. 200)) then 
+!           call omp_set_num_threads(4) 
+!     endif
+!     if((npart .gt. 200) .and. (npart .le. 250)) then
+!           call omp_set_num_threads(5)
+!     endif
+!     if((npart .gt. 250) .and. (npart .le. 300)) then
+!           call omp_set_num_threads(6)
+!     endif
+!     if((npart .gt. 300) .and. (npart .le. 350)) then
+!           call omp_set_num_threads(7)
+!     endif
+!     if((npart .gt. 350) .and. (npart .le. 400)) then 
+!           call omp_set_num_threads(8)
+!      endif
+!     if((npart .gt. 400) .and. (npart .le. 450)) then
+!           call omp_set_num_threads(9)
+!     endif
+!     if(npart .gt. 450) then 
+!              call omp_set_num_threads(10) 
+!     endif
 
        IF((.NOT. ADSORPTION).OR.(.NOT. LOCALF).OR.(i .GT. Npart).OR. (flag.EQ.1))THEN
           if(steele)then
@@ -2260,22 +2264,22 @@ implicit none
 !print*,'Npart = ',Npart
            
 !$OMP  parallel  if(npart .gt. 50)                               &
-!$OMP&   private (cld,clu,clv,clvectorx,clvectorx0,clvectory,clvectory0, &
+!$OMP&   private (clu,clv,clvectorx,clvectorx0,clvectory,clvectory0, &
 !$OMP&            clvectorz,clvectorz0,d2,energycij,gsm,ljvectorx,   &
 !$OMP&            ljvectorx0,ljvectory,ljvectory0,ljvectorz,ljvectorz0,  &
 !$OMP&            mcd2,mcvectorx,mcvectorx0,mcvectory,mcvectory0,      &
-!$OMP&            mcvectorz,mcvectorz0,penergy,sigma,vectorproduct,    &
+!$OMP&            mcvectorz,mcvectorz0,sigma,vectorproduct,    &
 !$OMP&            welldepth,xcl,xlj,xmclj,xmcn,ycl,ylj,ymclj,ymcn,zcl,   &
-!$OMP&            zlj,zmclj,zmcn, d6, d1, term1, term2, term3, j,k,m, U, V)  &
+!$OMP&            zlj,zmclj,zmcn, d6, d1, term1, term2, term3,j,k,m, U,V, cld, penergy)  &
 !$OMP&   shared  (flag,i,clenergy,adsorption,boxlengthz,buckingham,      &
 !$OMP&            carbonlengthx1,carbonlengthy1,charges,clx,cly,clz,     &
 !$OMP&            energyci,energymatrix,extrabin,indninsbox,ksi,ksif,    &
 !$OMP&            ljx,ljy,ljz,localf,mcx,mcy,mcz,ncl,nlj,npart,pbcx,     &
 !$OMP&            pbcy,pbcz,r2cutoff,sfenergy,sigmaff,smediation1,       &
-!$OMP&            smediation2,smlimitz,subbox,temperature,welldepthff,  energymatrix, clenergy, &
+!$OMP&            smediation2,smlimitz,subbox,temperature,welldepthff,  energymatrix, &
 !$OMP&            rMin, rM, alpha_B, scaleLength, scaleEnergy, permittivity, pi, kB)
 
-!$OMP DO schedule(static) reduction (+:energy)reduction(*:U,V,clu)reduction (+:extclenergy1)reduction (+:extenergy1)reduction (+:virial)reduction (+:virialcl)reduction (+:virialf) 
+!$OMP do schedule(static) reduction (+:energy) reduction (+:extclenergy1)reduction (+:extenergy1)reduction (+:virial)reduction (+:virialcl)reduction (+:virialf) 
           do j = 1, Npart !! 1-do
              !if((npart .gt. 200) .and. (npart .lt. 300)) then
              !  if(omp_get_thread_num() .eq. 5) then
@@ -2457,7 +2461,11 @@ implicit none
                               endif
                          endif
                          cld = sqrt(xcl*xcl + ycl*ycl + zcl*zcl)
-                        call coulombforce(cld, charges(k),charges(m),CLU,CLV)
+!call coulombforce(cld, charges(k),charges(m),CLU,CLV)
+!--
+                         CLU = charges(k)*charges(m)/(4.0e0*pi*permittivity*Scalelength*1.0e-10*scaleEnergy*kB*cld)
+                         CLV = CLU/3.0d0
+!--
                          if(SMediation1)then
                            EnergyCij = sqrt(EnergyCi*SFEnergy(j))
                            gSM = exp(-ksi*EnergyCij/Temperature)
@@ -3386,7 +3394,6 @@ implicit none
                      ECLy(i,j) = ECLy(new,j)
                      ECLz(i,j) = ECLz(new,j)
                   enddo
-!!$OMP  parallel do private (j) shared  (adsorption,energymatrix,i,localf,new,npart)
                   do j = 1, Npart
                       if(j.ne.i)then
                         IF(Adsorption.AND. LOCALF)THEN
@@ -3417,7 +3424,6 @@ implicit none
         integer iEqui
         
         real*8 AcceptanceRatio
-        
 !       --------------------------------------------------------------
 !       CHECK THE ACCEPTANCE RATIO & THEN ADJUST THE DISPLACEMENT STEP
 !       --------------------------------------------------------------
@@ -4050,7 +4056,7 @@ implicit none
        implicit none
               
        real*8 x, y, z
-              
+!!$OMP critical              
 !         --------------------
 !         CHECK THE X VARIABLE
 !         --------------------
@@ -4081,7 +4087,7 @@ implicit none
                  z = z - int(z/BoxLengthZ)*BoxLengthZ + BoxLengthZ
              endif
           endif
-                
+ !!$OMP end critical               
        return 
        endsubroutine positionCheck 
        
@@ -4287,7 +4293,7 @@ implicit none
           real*8 q0,q1,q2,q3
           real*8 rdn
           
-                            
+!!$OMP critical                  
           call random_number(rdn)
           theta = rdn*2.0e0*pi
           call random_number(rdn)
@@ -4309,7 +4315,7 @@ implicit none
           Rot(7) = 2.0E0*(q1*q3 + q0*q2) 
           Rot(8) = 2.0E0*(q2*q3 - q0*q1)
           Rot(9) = q0*q0 - q1*q1 - q2*q2 + q3*q3 
-
+!!$OMP end critical
           return
           end
             
@@ -5045,7 +5051,6 @@ implicit none
 
          endif
          
-         
          do iMove = 1, Nmove
       
             call random_number(rdn)
@@ -5063,7 +5068,6 @@ implicit none
             endif
 
         enddo
-        
         call adjustment(iEqui,numberOfMove, numberOfAcceptanceMove,AcceptanceRatio)
         totAcceptanceRatio = totAcceptanceRatio + AcceptanceRatio
        

@@ -1,0 +1,46 @@
+.TRUE.                !GCMC
+.FALSE.               !!INPUTCP: if input the corrected pressure and chemical potential. For multi-sites and non-ideal condition, this is necessary to do. 
+.FALSE.               !BULKGCMC run the bulk phase GCMC
+.FALSE.               !If collect local fluctuation information  LOCALF = .TRUE. or .FALSE.
+.FALSE.               !NVT
+.FALSE.               !BUCKINGHAM 
+.TRUE.                !USE JOHNSON Equation of State(EOS)
+.FALSE.               !USE WAGNER EOS (for methane CH4) 
+.FALSE.               !!!SDisplace = if DIVIDE THE BOX TO BINS OR NOT, if 'TRUE', then either choose 'HorizontalBin' or 'VerticalBin'.   
+.FALSE.               !!!HorizontalBin = Divide bin along z- direction, parallel to xy plane 
+.FALSE.               !!!VerticalBin = Divide bin along y- direction, parallel to xz plane     
+.TRUE.                !!!TradMC: .TRUE.=Apply traditional MC; .FALSE.=Appy Multi Bin-MC (Mu-CMC/Mu-GCMC) 
+.FALSE.               !!!ExtraBin: if using Extra Bin when deal with slit pores, infact is the 2nd simulaiton box just for bluk phase  
+.FALSE.               !!!ChangeXY: if adjust the box length in X /Y directions while keep volume constant
+.FALSE.               !!!DistanceD: if calculate the distance distribution
+.FALSE.               !!!RadiusD: if calculate the radius distribution
+.FALSE.               !!!LocalD2D: if calculate the 2D Local Density distribution 
+.FALSE.               !!!DecayESF: if decrease the SF potential at the two edges in y-direction 
+1.0e5                 !Vapor pressure at adsorption temperature for simulaiton model (Pa) Ar(87.3K): 8.5e4 pa; 1C N2(77K):1.23E5 pa; 2C-N2(77K): 8.7e4 pa
+119.9E0               !temperature              
+0                     !pore model  1-inclinepore, 2-surfPore, 0-none of these two  
+.FALSE.                !STEEL surface .TRUE.-YES, .FALSE.-NO   
+2                     !Number of steel surfaces   ////
+0.0e0                 !z position of  steel surface    //// 
+30.0e0                !z position of  steel surface
+.TRUE.               !Bojan Potential .TRUE.-YES, .FALSE.-NO 
+.FALSE.               !Close1End  
+.FALSE.               !Close2Ends 
+.FALSE.               !Sep_rho_Dis If calculate the seprate  local density distribution or not
+.FALSE.               !CorCompress If calculate the compressibility in the core of the pore or not
+.FALSE.               !//SMediation1// If use damping factor ksi for surface mediation for fluid-fluid interaction .TRUE.-YES, .FALSE.-NO 
+0.02E0                !ksi - surface mediation damping constant
+.FALSE.               !//SMediation2// If use damping factor ksiF for surface mediation for fluid-fluid interaction .TRUE.-YES, .FALSE.-NO  
+5.25E0                !//SMLimitZ (A) the range of using ksiF in Z direction for 1st layer
+9.00E0                !SMLimitZ2 (A) the range of using ksiF in Z direction for 2nd layer
+0.95E0                !ksiF - surface mediation damping constant
+.FALSE.               !FlexiCL - if change the location of charges or not
+.TRUE.                !pbcx  if use periodic boundary condition in x .TRUE.-use pbc, .FALSE.-don't use pbc
+.FALSE.               !pbcy  if use periodic boundary condition in y .TRUE.-use pbc, .FALSE.-don't use pbc
+.FALSE.               !pbcz  if use periodic boundary condition in z .TRUE.-use pbc, .FALSE.-don't use pbc
+1000                !Ncycle       number of cycle for equilibriation
+1000                !Ncycles      number of cycle for simpling 
+0.2E0                 !!!AccRatio = the Ratio of displacement to adjust the move steplength   
+10                    !!!MaxLayer = the bin numbers in the adsorption phase  
+1.0e0                 !!!LayerH = The height of the bin in adsorbed phase 
+10.0e0                !!!IntelH = the height of the interfaical region between adsorbed phase and gas phase    

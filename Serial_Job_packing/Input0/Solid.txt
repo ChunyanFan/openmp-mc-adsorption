@@ -1,0 +1,3 @@
+3.40e0                  sigmaSS       
+28.0e0                  WellDepthSS  solid-fluid interaction parameter Ksf = 0
+                        wellDepthss' = (1-ksf)^2*welldepthSS
