@@ -2140,6 +2140,18 @@ implicit none
 
 
           if(Bojan)then
+<<<<<<< HEAD
+=======
+!$OMP  parallel do default(none) &
+!$OMP   private (j,k,deltay,deltay1,cy1,BU,smcy,LJy1,sLJy) &
+!$OMP   shared (i,NS,carbonlengthy1,StripC,StripW,BoPBCy,NLJ,SubBox,VC) &
+!$OMP   shared (extrabin,indninsbox) &
+!$OMP   shared (mcy,LJy) &
+!$OMP   reduction (+:EnergyC,VirialC)
+!BojanPotential does not appear to change VC
+!!!$OMP   firstprivate (i,NS,carbonlengthy1,StripC,StripW,BoPBCy,NLJ,SubBox,VC) &
+!!!$OMP   firstprivate (extrabin,indninsbox) &
+>>>>>>> f851cf079a90a1778feb7adb212d8d8df457e930
               do j = 1, NS
                   IF(ExtraBin)THEN
                      if(indNinSBox(i).lt.SubBox)then
@@ -2193,6 +2205,16 @@ implicit none
              ENDIF  
          endif
        
+!$OMP  parallel do default(none)                                         &
+!$OMP   private (k,j,xcmcij,ycmcij,zcmcij,xcmcn,ycmcn,zcmcn,cmcd2,xclj,yclj,zclj,sigmaSF,welldepthSF,UC,dc2) &
+!$OMP   shared (NLJ,NC3,pbcx,pbcy,pbcz,xc,yc,zc,mcx,mcy,mcz,ljx,ljy,ljz,r2Cutoff,i,VC) &
+!$OMP   shared (CarbonLengthx1,CarbonLengthy1,BoxLengthZ,sigmaSS,sigmaFF,welldepthSS,welldepthFF) &
+!$OMP   reduction (+:EnergyC,VirialC) &
+!$OMP   lastprivate (VC)
+! lastprivate(VC) should not be needed.  Next big loop sets it though without calling potentialEnergyC first.
+! potentialEnergyC changes VC
+!!!$OMP   firstprivate (NLJ,NC3,pbcx,pbcy,pbcz,xc,yc,zc,mcx,mcy,mcz,ljx,ljy,ljz,r2Cutoff,i,VC) &
+!!!$OMP   firstprivate (CarbonLengthx1,CarbonLengthy1,BoxLengthZ,sigmaSS,sigmaFF,welldepthSS,welldepthFF) &
           do k = 1, NLJ
              do j= 1, NC3
 !               --------------------
@@ -2254,6 +2276,7 @@ implicit none
 !      ------------------------------------
 !      INTERACTION ENERGY BETWEEN PARTICLES
 !      ------------------------------------
+<<<<<<< HEAD
        
 ! potentialEnergy does not change any globals.
 ! coulombforce is pure.
@@ -2287,6 +2310,35 @@ implicit none
              !  endif
              !endif
 
+=======
+      if(i.gt.0) then   !! 1-if
+        if((.NOT. ADSORPTION).OR.(.NOT. LOCALF).OR.(i .GT. Npart) .OR. (FLAG .eq. 1))then  !! 2-if
+!$OMP  parallel do default(none)                                         &
+!$OMP    private (j,pEnergy,d2,mcd2,VectorProduct,k,m,xlj,ylj,zlj,xmclj,ymclj,zmclj) &
+!$OMP    private (MCVectorX0,MCVectorY0,MCVectorZ0,MCVectorX,MCVectorY,MCVectorZ) &
+!$OMP    private (LJVectorX0,LJVectorY0,LJVectorZ0,LJVectorX,LJVectorY,LJVectorZ) &
+!$OMP    private (CLVectorX0,CLVectorY0,CLVectorZ0,CLVectorX,CLVectorY,CLVectorZ) &
+!$OMP    private (cld,xcl,ycl,zcl,xmcn,ymcn,zmcn,U,V,CLU,CLV,EnergyCij,welldepth) &
+!$OMP    private (sigma,gSM) &
+!$OMP    shared (EnergyMatrix) &
+!$OMP    shared (i,Npart,ExtraBin,CarbonLengthx1,CarbonLengthy1,BoxLengthZ) &
+!$OMP    shared (indNinSBox,SubBox,mcx,mcy,mcz,ljx,ljy,ljz,CLx,CLy,CLz) &
+!$OMP    shared (sigmaFF,SMLimitZ,Temperature,charges) &
+!$OMP    shared (LOCALF,ADSORPTION,flag,R2Cutoff,welldepthFF,NLJ,pbcx,pbcy,pbcz) &
+!$OMP    shared (BUCKINGHAM,ksi,ksiF,NCL,EnergyCi,SFEnergy,smediation1,smediation2) &
+!$OMP    reduction (+:CLEnergy,VirialCL,ExtCLEnergy1,ExtEnergy1,Energy,Virial,VirialF)
+
+!!$OMP    firstprivate (i,Npart,ExtraBin,CarbonLengthx1,CarbonLengthy1,BoxLengthZ) &
+!!$OMP    firstprivate (indNinSBox,SubBox,mcx,mcy,mcz,ljx,ljy,ljz,CLx,CLy,CLz) &
+!!$OMP    firstprivate (sigmaFF,SMLimitZ,Temperature,charges) &
+!!$OMP    firstprivate (LOCALF,ADSORPTION,flag,R2Cutoff,welldepthFF,NLJ,pbcx,pbcy,pbcz) &
+!!$OMP    firstprivate (BUCKINGHAM,ksi,ksiF,NCL,EnergyCi,SFEnergy,smediation1,smediation2) &
+!routines:
+! potentialEnergy does not change any globals.
+! coulombforce is pure.
+
+           do j = 1, Npart !! 1-do
+>>>>>>> f851cf079a90a1778feb7adb212d8d8df457e930
               if(ExtraBin)then
                 if( (indNinSBox(i).eq.SubBox) .and. (indNinSBox(j).lt.SubBox) )CYCLE
                 if( (indNinSBox(i).lt.SubBox) .and. (indNinSBox(j).eq.SubBox) )CYCLE
@@ -4348,7 +4400,16 @@ implicit none
 !         Energy = 0.0E0
 !         return
 !       endif
+<<<<<<< HEAD
        !$OMP critical !critical
+=======
+       
+!$OMP  parallel do default(none)                                         &
+!$OMP   private (distancez,ienergy,j,k,sigmasf,welldepthsf)             &
+!$OMP   shared  (i,graphenelayer,ljz,nlj,nsteele,pi,psteele,rho_s,      &
+!$OMP            sigmaff,sigmass,welldepthff,welldepthss)               &
+!$OMP   reduction (+:energy)
+>>>>>>> f851cf079a90a1778feb7adb212d8d8df457e930
        DO k = 1, Nsteele
          do j=1,NLJ
             sigmaSF     = (sigmaFF(j) + sigmaSS)/2.0e0
