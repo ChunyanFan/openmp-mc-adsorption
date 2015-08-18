@@ -2243,7 +2243,7 @@ implicit none
 !$OMP private (mcvectorz,mcvectorz0,penergy,sigma,vectorproduct)    &
 !$OMP private (welldepth,xlj,xmclj,xmcn,ylj,ymclj,ymcn)   &
 !$OMP private (zlj,zmclj,zmcn, d6, d1, term1, term2, term3, j,k,m,xcl,ycl,zcl, U, V)&
-!$OMP shared(sfenergy, energymatrix, clenergy, energyci, ljx,ljy,ljz) &
+!$OMP shared(sfenergy, energymatrix, energyci, ljx,ljy,ljz) &
 !$OMP shared(carbonlengthx1, pbcx, pbcy,  pbcz, carbonlengthy1, boxlengthz)  &
 !$OMP shared  (flag,i, adsorption,buckingham, pi, kb, permittivity)     &
 !$OMP shared  (clx,cly,clz,extrabin,indninsbox,ksi,ksif)  &
@@ -2252,7 +2252,7 @@ implicit none
 !$OMP shared  (rMin,rM,alpha_B,scaleLength,scaleEnergy) &
 !$OMP shared  (welldepthff, sigmaff,charges, mcx,mcy,mcz)
 
-!$OMP DO schedule(static) reduction(*:U,V) reduction(-:xcl,ycl,zcl) reduction(+:virial,virialcl,virialf,extclenergy1,extenergy1,energy)  
+!$OMP DO schedule(static) reduction(*:U,V) reduction(-:xcl,ycl,zcl) reduction(+:clenergy,virial,virialcl,virialf,extclenergy1,extenergy1,energy)  
           do j = 1, Npart !! 1-do
 
               if(ExtraBin)then
