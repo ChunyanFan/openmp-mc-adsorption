@@ -1,3 +1,0 @@
-0                     !The initial number of particles in the simulation box, Npart
-------------LJ SITES----------------------------
-------------CL SITES----------------------------
