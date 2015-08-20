@@ -1,0 +1,11 @@
+73.7E0               !!!BoxLengthX: the total length of simulation box in X- direction
+73.7E0               !!!BoxLengthY: the total length of simulation box in y- direction
+15.0E0                !!!BoxLengthZ: the total length of simulation box in z- direction
+0.0E0        	      !!!AccVYL ! The Lower boundary in y direction for the acc Volume	
+73.7E0		      !!!AccVYH ! The Higher boundary in y direction for the acc Volume
+1                     !!!NPartinY: the number of Parts in y- direction
+73.7E0               !!!Part1Ly: the length of the 1st part in y- direction ( 1st = 3rd)
+15.0e0                !!!Part2Lz: the pore width 
+1, 0, 0               !!!Part1Bin, Part2Bin, Part3Bin: the number of bins in the each part along y- direction
+0.0E0    73.7E0       !!!LayerYL(1),  LayerYH(1) in (A) : For the 1st bin in Part1
+10.0E0               !!!ExtraBoxH: The height of the ExtraBox (A)
