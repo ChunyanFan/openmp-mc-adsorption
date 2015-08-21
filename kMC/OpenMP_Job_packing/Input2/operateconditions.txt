@@ -1,0 +1,39 @@
+.TRUE.                !NVT
+.FALSE.               !NVTDes: if do the desorption in NVT
+.FALSE.               !SURFACE
+.TRUE.                !PORE
+.TRUE.                !ExtraBox
+.TRUE.                !EQUILIBRIUM
+.FALSE.               !KINETIC
+.FALSE.               !kVLE : CALCULATE THE VAPOR-LIQUID EQULIBRIUM
+.FALSE.               !NBOURBIN: move the particl in neighbour bins 
+.FASLE.               !MassTSFER 
+.FALSE.               !ChangeXY
+.FALSE.               !MeanFPath   
+.FALSE.               !ENTROPY
+.FALSE.               !DistanceD
+.FALSE.               !LocalD2D: if calculate the 2D Local Density distribution 
+0.0E0                 !LowUi--The Low limit of the Energy per particle for calculation of entropy_reduced unit
+-100.0e0              !HighUi--The High limit of the Energy per particle for calculation of entropy_reduced unit
+0                     !The initial number of particles in the simulation box, Npart
+5                     !AddN: The number of particles added into the simulation box for each new configuration
+200                   !NumOfrho
+1.00E-9               !SEinput(1) (mol/m2) 
+1.0e5                 !Vapor pressure at adsorption temperature for simulaiton model (Pa) Ar(87.3K): 8.5e4 pa; 1C N2(77K):1.23E5 pa; 2C-N2(77K): 8.7e4 pa
+087.30               !temperature     
+.TRUE.                !STEEL surface .TRUE.-YES, .FALSE.-NO   
+2                     !Number of steel surfaces   ////
+0.0e0                 !z position of  steel surface    //// 
+15.0e0                !z position of  steel surface
+.FALSE.               !Bojan Potential .TRUE.-YES, .FALSE.-NO 
+.FALSE.               !Close1End  
+.FALSE.               !Close2Ends          
+.TRUE.                !pbcx  if use periodic boundary condition in x .TRUE.-use pbc, .FALSE.-don't use pbc
+.TRUE.                !pbcy  if use periodic boundary condition in y .TRUE.-use pbc, .FALSE.-don't use pbc
+.FALSE.               !pbcz  if use periodic boundary condition in z .TRUE.-use pbc, .FALSE.-don't use pbc
+10000              !Ncycle       number of cycle for equilibriation
+10000              !Ncycles      number of cycle for simpling   
+0.01e0                !!!Dist_Limit, times sigma, the limit of the the distance between two sites
+75.0E0                !!!PairEff_Limit 
+75.0E0                !!!PairEsf_Limit  
+            
